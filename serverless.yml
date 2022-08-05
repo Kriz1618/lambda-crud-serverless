@@ -5,16 +5,23 @@ provider:
   name: aws
   runtime: nodejs14.x
   region: us-west-2
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:*
-      Resource:
-        - arn:aws:dynamodb:us-west-2:827568007717:table/TaskTable
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:*
+          Resource:
+            - !Ref TaskTable
+        - Effect: Allow
+          Action:
+            - sns:Publish
+            - sns:Subscribe
+          Resource: !Ref SNSTopic
 
 functions:
   hello:
-    handler: src/hello.hello
+    handler: src/handler.hello
     events:
       - httpApi:
           path: /
@@ -54,6 +61,14 @@ functions:
       - httpApi:
           path: /tasks/{id}
           method: delete
+  sendNotifications: 
+    handler: src/notificationsSender.sendMessage
+    environment:
+      TOPIC_ARN: !Ref SNSTopic
+    events:
+      - httpApi:
+          path: /notifications
+          method: post
 
 resources:
   Resources:
@@ -68,3 +83,7 @@ resources:
         KeySchema:
           - AttributeName: id
             KeyType: HASH
+    SNSTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: snsTopic
